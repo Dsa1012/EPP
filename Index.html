@@ -112,6 +112,16 @@
             transition: all 0.3s ease;
         }
 
+        .form-group select {
+            color: white;
+        }
+
+        .form-group select option {
+            background: #2c3e50;
+            color: white;
+            padding: 8px;
+        }
+
         .form-group input::placeholder {
             color: rgba(255,255,255,0.7);
         }
@@ -223,14 +233,20 @@
             background: #e74c3c;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 8px 12px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 0.8rem;
+            transition: all 0.3s ease;
         }
 
         .delete-btn:hover {
             background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .delete-btn:active {
+            transform: scale(0.95);
         }
 
         .no-data {
@@ -338,12 +354,10 @@
             <div class="section results-section">
                 <h2>📊 Resultados</h2>
                 <div class="export-controls">
-                    <input type="file" id="cargar-archivo" accept=".csv,.xlsx,.xls,.json" style="display: none;" onchange="cargarArchivo(event)">
-                    <button class="btn btn-secondary" onclick="document.getElementById('cargar-archivo').click()">📁 Cargar Datos</button>
+                    <input type="file" id="cargar-archivo" accept=".csv" style="display: none;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('cargar-archivo').click()">📁 Cargar CSV</button>
                     <button class="btn btn-secondary" onclick="descargarPlantilla()">📋 Descargar Plantilla</button>
-                    <button class="btn btn-primary" onclick="exportarExcel()">📊 Exportar a Excel</button>
-                    <button class="btn btn-primary" onclick="exportarPDF()">📄 Exportar a PDF</button>
-                    <button class="btn btn-secondary" onclick="imprimirReporte()">🖨️ Imprimir</button>
+                    <button class="btn btn-primary" onclick="exportarCSV()">📊 Exportar CSV</button>
                 </div>
                 <div id="resumen" class="summary-cards"></div>
                 <div id="tabla-container">
@@ -368,7 +382,6 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         let datos = [];
         let filtros = {
@@ -391,7 +404,7 @@
             }
 
             const nuevoElemento = {
-                id: Date.now(),
+                id: Date.now() + Math.random(),
                 cargo: cargo,
                 tipo: tipo,
                 elemento: elemento,
@@ -462,14 +475,6 @@
             mostrarDatos();
         }
 
-        function eliminarElemento(id) {
-            if (confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
-                datos = datos.filter(item => item.id !== id);
-                actualizarFiltros();
-                mostrarDatos();
-            }
-        }
-
         function obtenerDatosFiltrados() {
             return datos.filter(item => {
                 return (!filtros.cargo || item.cargo === filtros.cargo) &&
@@ -492,18 +497,43 @@
                 return;
             }
 
-            tbody.innerHTML = datosFiltrados.map(item => `
-                <tr>
-                    <td><strong>${item.cargo}</strong></td>
-                    <td><span style="background: ${item.tipo === 'EPP' ? '#e74c3c' : '#3498db'}; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem;">${item.tipo}</span></td>
-                    <td>${item.elemento}</td>
-                    <td><strong>${item.cantidad}</strong></td>
-                    <td>$${item.monto.toFixed(2)}</td>
-                    <td><strong>$${item.total.toFixed(2)}</strong></td>
-                    <td>${item.proveedor}</td>
-                    <td><button class="delete-btn" onclick="eliminarElemento(${item.id})">Eliminar</button></td>
-                </tr>
-            `).join('');
+            let html = '';
+            for (let i = 0; i < datosFiltrados.length; i++) {
+                const item = datosFiltrados[i];
+                html += `
+                    <tr>
+                        <td><strong>${item.cargo}</strong></td>
+                        <td><span style="background: ${item.tipo === 'EPP' ? '#e74c3c' : '#3498db'}; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem;">${item.tipo}</span></td>
+                        <td>${item.elemento}</td>
+                        <td><strong>${item.cantidad}</strong></td>
+                        <td>$${Math.round(item.monto)}</td>
+                        <td><strong>$${Math.round(item.total)}</strong></td>
+                        <td>${item.proveedor}</td>
+                        <td>
+                            <button class="delete-btn" onclick="eliminar(${i})" type="button">
+                                ❌ Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            tbody.innerHTML = html;
+        }
+
+        function eliminar(indice) {
+            const datosFiltrados = obtenerDatosFiltrados();
+            const elemento = datosFiltrados[indice];
+
+            for (let i = 0; i < datos.length; i++) {
+                if (datos[i].id === elemento.id) {
+                    datos.splice(i, 1);
+                    break;
+                }
+            }
+
+            actualizarFiltros();
+            mostrarDatos();
         }
 
         function mostrarResumen(datosFiltrados) {
@@ -543,15 +573,15 @@
                     <p>Elementos EPP</p>
                 </div>
                 <div class="summary-card">
-                    <h3>$${montoTotalRopa.toFixed(2)}</h3>
+                    <h3>$${Math.round(montoTotalRopa)}</h3>
                     <p>Costo Ropa</p>
                 </div>
                 <div class="summary-card">
-                    <h3>$${montoTotalEPP.toFixed(2)}</h3>
+                    <h3>$${Math.round(montoTotalEPP)}</h3>
                     <p>Costo EPP</p>
                 </div>
                 <div class="summary-card">
-                    <h3>$${montoTotal.toFixed(2)}</h3>
+                    <h3>$${Math.round(montoTotal)}</h3>
                     <p>Costo Total</p>
                 </div>
                 <div class="summary-card">
@@ -561,382 +591,156 @@
             `;
         }
 
-        function exportarExcel() {
-            const datosFiltrados = obtenerDatosFiltrados();
-            if (datosFiltrados.length === 0) {
-                alert('No hay datos para exportar');
-                return;
-            }
-
-            try {
-                // Crear datos para Excel
-                const headers = ['Cargo', 'Tipo', 'Elemento', 'Cantidad', 'Monto Unitario', 'Total', 'Proveedor'];
-                const datos_excel = [headers];
-                
-                datosFiltrados.forEach(item => {
-                    datos_excel.push([
-                        item.cargo,
-                        item.tipo,
-                        item.elemento,
-                        item.cantidad,
-                        item.monto,
-                        item.total,
-                        item.proveedor
-                    ]);
-                });
-
-                // Crear workbook
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(datos_excel);
-
-                // Aplicar formato
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                
-                // Estilo para headers
-                for (let col = range.s.c; col <= range.e.c; col++) {
-                    const cellAddress = XLSX.utils.encode_cell({r: 0, c: col});
-                    if (!ws[cellAddress]) continue;
-                    ws[cellAddress].s = {
-                        font: { bold: true, color: { rgb: "FFFFFF" } },
-                        fill: { fgColor: { rgb: "2C3E50" } },
-                        alignment: { horizontal: "center" }
-                    };
-                }
-
-                // Ajustar ancho de columnas
-                const colWidths = [
-                    { wch: 15 }, // Cargo
-                    { wch: 8 },  // Tipo
-                    { wch: 25 }, // Elemento
-                    { wch: 10 }, // Cantidad
-                    { wch: 12 }, // Monto Unit.
-                    { wch: 12 }, // Total
-                    { wch: 20 }  // Proveedor
-                ];
-                ws['!cols'] = colWidths;
-
-                // Agregar hoja al workbook
-                XLSX.utils.book_append_sheet(wb, ws, "Reporte EPP");
-
-                // Generar archivo y descargar
-                const fecha = new Date().toISOString().split('T')[0];
-                XLSX.writeFile(wb, `reporte_epp_${fecha}.xlsx`);
-                
-                alert('✅ Archivo Excel descargado exitosamente');
-                
-            } catch (error) {
-                console.error('Error al exportar Excel:', error);
-                alert('❌ Error al exportar. Descargando como CSV...');
-                // Fallback a CSV si falla Excel
-                exportarCSV();
-            }
-        }
-
         function exportarCSV() {
             const datosFiltrados = obtenerDatosFiltrados();
-            const headers = ['Cargo', 'Tipo', 'Elemento', 'Cantidad', 'Monto Unitario', 'Total', 'Proveedor'];
-            const csvRows = [headers.join(',')];
-            
-            datosFiltrados.forEach(item => {
-                const row = [
-                    `"${item.cargo.replace(/"/g, '""')}"`,
-                    `"${item.tipo}"`,
-                    `"${item.elemento.replace(/"/g, '""')}"`,
-                    item.cantidad,
-                    item.monto.toFixed(2),
-                    item.total.toFixed(2),
-                    `"${item.proveedor.replace(/"/g, '""')}"`
-                ];
-                csvRows.push(row.join(','));
-            });
-
-            const csvContent = csvRows.join('\n');
-            const fecha = new Date().toISOString().split('T')[0];
-            
-            const blob = new Blob(['\ufeff' + csvContent], { 
-                type: 'text/csv;charset=utf-8;' 
-            });
-            
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.style.display = 'none';
-            link.href = url;
-            link.download = `reporte_epp_${fecha}.csv`;
-            
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-        }
-
-        function exportarPDF() {
-            const datosFiltrados = obtenerDatosFiltrados();
             if (datosFiltrados.length === 0) {
                 alert('No hay datos para exportar');
                 return;
             }
 
             try {
-                const fecha = new Date().toLocaleDateString('es-ES');
+                const headers = ['Cargo', 'Tipo', 'Elemento', 'Cantidad', 'Monto Unitario', 'Total', 'Proveedor'];
+                const csvRows = [headers.join(',')];
                 
-                let filtrosAplicados = [];
-                if (filtros.cargo) filtrosAplicados.push(`Cargo: ${filtros.cargo}`);
-                if (filtros.proveedor) filtrosAplicados.push(`Proveedor: ${filtros.proveedor}`);
-                if (filtros.tipo) filtrosAplicados.push(`Tipo: ${filtros.tipo}`);
+                datosFiltrados.forEach(item => {
+                    const row = [
+                        `"${item.cargo.replace(/"/g, '""')}"`,
+                        `"${item.tipo}"`,
+                        `"${item.elemento.replace(/"/g, '""')}"`,
+                        item.cantidad,
+                        Math.round(item.monto),
+                        Math.round(item.total),
+                        `"${item.proveedor.replace(/"/g, '""')}"`
+                    ];
+                    csvRows.push(row.join(','));
+                });
+
+                const csvContent = csvRows.join('\n');
+                const fecha = new Date().toISOString().split('T')[0];
                 
-                const filtrosTexto = filtrosAplicados.length > 0 ? 
-                    `<p><strong>Filtros aplicados:</strong> ${filtrosAplicados.join(', ')}</p>` : 
-                    '<p><strong>Mostrando:</strong> Todos los datos</p>';
-
-                const totalRopa = datosFiltrados.filter(i => i.tipo === 'Ropa').reduce((s, i) => s + i.cantidad, 0);
-                const totalEPP = datosFiltrados.filter(i => i.tipo === 'EPP').reduce((s, i) => s + i.cantidad, 0);
-                const costoTotal = datosFiltrados.reduce((s, i) => s + i.total, 0);
-
-                const htmlContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Reporte EPP - ${fecha}</title>
-                    <style>
-                        @page { margin: 1in; }
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            margin: 0; 
-                            padding: 20px;
-                            font-size: 12px;
-                        }
-                        h1 { 
-                            color: #2c3e50; 
-                            text-align: center; 
-                            margin-bottom: 10px;
-                            font-size: 24px;
-                        }
-                        .header { 
-                            text-align: center; 
-                            margin-bottom: 30px; 
-                            border-bottom: 2px solid #2c3e50;
-                            padding-bottom: 15px;
-                        }
-                        .summary { 
-                            display: flex; 
-                            justify-content: space-around; 
-                            margin: 20px 0;
-                            background-color: #f8f9fa;
-                            padding: 15px;
-                            border-radius: 8px;
-                        }
-                        .summary-item { 
-                            text-align: center; 
-                            padding: 10px; 
-                            border: 1px solid #ddd; 
-                            border-radius: 5px;
-                            background-color: white;
-                            min-width: 120px;
-                        }
-                        .summary-item h3 {
-                            margin: 0 0 5px 0;
-                            color: #2c3e50;
-                            font-size: 18px;
-                        }
-                        .summary-item p {
-                            margin: 0;
-                            color: #666;
-                            font-size: 11px;
-                        }
-                        table { 
-                            width: 100%; 
-                            border-collapse: collapse; 
-                            margin: 20px 0;
-                            font-size: 11px;
-                        }
-                        th, td { 
-                            border: 1px solid #ddd; 
-                            padding: 8px; 
-                            text-align: left; 
-                        }
-                        th { 
-                            background-color: #2c3e50; 
-                            color: white;
-                            font-weight: bold; 
-                        }
-                        tr:nth-child(even) { 
-                            background-color: #f9f9f9; 
-                        }
-                        .footer {
-                            margin-top: 30px;
-                            text-align: center;
-                            font-size: 10px;
-                            color: #666;
-                            border-top: 1px solid #ddd;
-                            padding-top: 10px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>🛡️ Reporte de Ropa y EPP</h1>
-                        <p><strong>Fecha de generación:</strong> ${fecha}</p>
-                        ${filtrosTexto}
-                    </div>
-                    
-                    <div class="summary">
-                        <div class="summary-item">
-                            <h3>${totalRopa}</h3>
-                            <p>Piezas de Ropa</p>
-                        </div>
-                        <div class="summary-item">
-                            <h3>${totalEPP}</h3>
-                            <p>Elementos EPP</p>
-                        </div>
-                        <div class="summary-item">
-                            <h3>$${costoTotal.toFixed(2)}</h3>
-                            <p>Costo Total</p>
-                        </div>
-                        <div class="summary-item">
-                            <h3>${datosFiltrados.length}</h3>
-                            <p>Total Elementos</p>
-                        </div>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Cargo</th>
-                                <th>Tipo</th>
-                                <th>Elemento</th>
-                                <th>Cantidad</th>
-                                <th>Monto Unit.</th>
-                                <th>Total</th>
-                                <th>Proveedor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${datosFiltrados.map(item => `
-                                <tr>
-                                    <td>${item.cargo}</td>
-                                    <td>${item.tipo}</td>
-                                    <td>${item.elemento}</td>
-                                    <td>${item.cantidad}</td>
-                                    <td>$${item.monto.toFixed(2)}</td>
-                                    <td><strong>$${item.total.toFixed(2)}</strong></td>
-                                    <td>${item.proveedor}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="footer">
-                        <p>Generado por Sistema de Gestión EPP - ${new Date().toLocaleString('es-ES')}</p>
-                    </div>
-                </body>
-                </html>`;
-
-                const ventanaImpresion = window.open('', '_blank');
-                if (ventanaImpresion) {
-                    ventanaImpresion.document.write(htmlContent);
-                    ventanaImpresion.document.close();
-                    
-                    setTimeout(() => {
-                        ventanaImpresion.focus();
-                        ventanaImpresion.print();
-                    }, 500);
-                } else {
-                    alert('❌ No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
-                }
+                const blob = new Blob(['\ufeff' + csvContent], { 
+                    type: 'text/csv;charset=utf-8;' 
+                });
+                
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.style.display = 'none';
+                link.href = url;
+                link.download = `reporte_epp_${fecha}.csv`;
+                
+                document.body.appendChild(link);
+                link.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+                
+                alert('✅ Archivo CSV descargado exitosamente');
                 
             } catch (error) {
-                console.error('Error al generar PDF:', error);
-                alert('❌ Error al generar el reporte. Intenta nuevamente.');
-            }
-        }
-
-        function imprimirReporte() {
-            const datosFiltrados = obtenerDatosFiltrados();
-            if (datosFiltrados.length === 0) {
-                alert('No hay datos para imprimir');
-                return;
-            }
-            exportarPDF();
-        }
-
-        // Función para cargar archivos
-        function cargarArchivo(event) {
-            const archivo = event.target.files[0];
-            if (!archivo) return;
-
-            const extension = archivo.name.toLowerCase().split('.').pop();
-            const reader = new FileReader();
-
-            if (extension === 'csv') {
-                reader.onload = function(e) {
-                    procesarCSV(e.target.result);
-                };
-                reader.readAsText(archivo);
-            } else if (extension === 'json') {
-                reader.onload = function(e) {
-                    procesarJSON(e.target.result);
-                };
-                reader.readAsText(archivo);
-            } else if (extension === 'xlsx' || extension === 'xls') {
-                reader.onload = function(e) {
-                    procesarExcel(e.target.result);
-                };
-                reader.readAsArrayBuffer(archivo);
-            } else {
-                alert('❌ Formato de archivo no soportado. Use CSV, JSON, XLS o XLSX');
+                console.error('Error al exportar:', error);
+                alert('❌ Error al exportar. Intenta nuevamente.');
             }
         }
 
         function procesarCSV(contenido) {
             try {
                 const lineas = contenido.split('\n');
-                const headers = lineas[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
-                
-                // Mapear headers comunes
+                if (lineas.length < 2) {
+                    alert('❌ El archivo CSV está vacío');
+                    return;
+                }
+
+                const primeraLinea = lineas[0];
+                const separador = primeraLinea.includes(';') ? ';' : ',';
+                console.log('Separador detectado:', separador);
+
+                const headers = primeraLinea.split(separador).map(h => h.replace(/"/g, '').trim().toLowerCase());
+                console.log('Headers encontrados:', headers);
+
                 const mapeoHeaders = {
-                    'cargo': ['cargo', 'puesto', 'position', 'job'],
-                    'tipo': ['tipo', 'type', 'categoria', 'category'],
-                    'elemento': ['elemento', 'item', 'articulo', 'product', 'producto'],
-                    'cantidad': ['cantidad', 'qty', 'quantity', 'cant'],
-                    'monto': ['monto', 'precio', 'price', 'costo', 'cost', 'valor'],
-                    'proveedor': ['proveedor', 'supplier', 'vendor', 'empresa']
+                    'cargo': ['cargo', 'puesto', 'position', 'job', 'trabajo'],
+                    'tipo': ['tipo', 'type', 'categoria', 'category', 'clase'],
+                    'elemento': ['elemento', 'item', 'articulo', 'product', 'producto', 'descripcion'],
+                    'cantidad': ['cantidad', 'qty', 'quantity', 'cant', 'unidades'],
+                    'monto': ['monto', 'precio', 'price', 'costo', 'cost', 'valor', 'monto unitario', 'unitario'],
+                    'proveedor': ['proveedor', 'supplier', 'vendor', 'empresa', 'fabricante']
                 };
 
                 const indices = {};
                 Object.keys(mapeoHeaders).forEach(campo => {
-                    const index = headers.findIndex(h => 
-                        mapeoHeaders[campo].some(variante => h.includes(variante))
-                    );
-                    if (index !== -1) indices[campo] = index;
+                    // Buscar coincidencia exacta primero
+                    let index = headers.findIndex(h => h === campo);
+                    
+                    // Si no encuentra coincidencia exacta, buscar que contenga alguna variante
+                    if (index === -1) {
+                        index = headers.findIndex(h => 
+                            mapeoHeaders[campo].some(variante => h.includes(variante) || variante.includes(h))
+                        );
+                    }
+                    
+                    if (index !== -1) {
+                        indices[campo] = index;
+                        console.log(`Campo '${campo}' encontrado en columna ${index}: '${headers[index]}'`);
+                    }
                 });
 
+                console.log('Índices mapeados:', indices);
+
                 // Verificar que tenemos los campos mínimos
-                if (!indices.cargo || !indices.tipo || !indices.elemento) {
-                    alert('❌ El archivo CSV debe contener al menos las columnas: Cargo, Tipo, Elemento');
+                if (indices.cargo === undefined || indices.tipo === undefined || indices.elemento === undefined) {
+                    const faltantes = [];
+                    if (indices.cargo === undefined) faltantes.push('Cargo');
+                    if (indices.tipo === undefined) faltantes.push('Tipo');
+                    if (indices.elemento === undefined) faltantes.push('Elemento');
+                    
+                    alert(`❌ No se encontraron las columnas requeridas: ${faltantes.join(', ')}\n\nColumnas encontradas: ${headers.join(', ')}\n\nVerifica que el archivo tenga las columnas: Cargo, Tipo, Elemento`);
                     return;
                 }
 
                 let datosImportados = 0;
+                let errores = 0;
+
                 for (let i = 1; i < lineas.length; i++) {
                     const linea = lineas[i].trim();
                     if (!linea) continue;
 
-                    const valores = linea.split(',').map(v => v.replace(/"/g, '').trim());
-                    
-                    const cargo = valores[indices.cargo];
-                    const tipo = valores[indices.tipo];
-                    const elemento = valores[indices.elemento];
+                    let valores;
+                    if (separador === ';') {
+                        valores = linea.split(';').map(v => v.trim().replace(/^"|"$/g, ''));
+                    } else {
+                        // Para comas, manejo más complejo respetando comillas
+                        valores = [];
+                        let dentroComillas = false;
+                        let valorActual = '';
+                        
+                        for (let j = 0; j < linea.length; j++) {
+                            const char = linea[j];
+                            if (char === '"') {
+                                dentroComillas = !dentroComillas;
+                            } else if (char === ',' && !dentroComillas) {
+                                valores.push(valorActual.trim().replace(/^"|"$/g, ''));
+                                valorActual = '';
+                            } else {
+                                valorActual += char;
+                            }
+                        }
+                        valores.push(valorActual.trim().replace(/^"|"$/g, ''));
+                    }
+
+                    const cargo = (valores[indices.cargo] || '').toString().trim();
+                    const tipo = (valores[indices.tipo] || '').toString().trim();
+                    const elemento = (valores[indices.elemento] || '').toString().trim();
                     const cantidad = parseInt(valores[indices.cantidad]) || 1;
                     const monto = parseFloat(valores[indices.monto]) || 0;
-                    const proveedor = valores[indices.proveedor] || 'Sin especificar';
+                    const proveedor = (valores[indices.proveedor] || 'Sin especificar').toString().trim();
+
+                    console.log(`Fila ${i}: cargo='${cargo}', tipo='${tipo}', elemento='${elemento}'`);
 
                     if (cargo && tipo && elemento) {
                         const nuevoElemento = {
-                            id: Date.now() + i,
+                            id: Date.now() + i + Math.random() * 1000,
                             cargo: cargo,
                             tipo: tipo,
                             elemento: elemento,
@@ -947,12 +751,20 @@
                         };
                         datos.push(nuevoElemento);
                         datosImportados++;
+                    } else {
+                        errores++;
+                        console.log(`Fila ${i} omitida por datos incompletos`);
                     }
                 }
 
                 actualizarFiltros();
                 mostrarDatos();
-                alert(`✅ Se importaron ${datosImportados} elementos exitosamente`);
+                
+                let mensaje = `✅ Se importaron ${datosImportados} elementos exitosamente`;
+                if (errores > 0) {
+                    mensaje += `\n⚠️ ${errores} filas omitidas por datos incompletos`;
+                }
+                alert(mensaje);
 
             } catch (error) {
                 console.error('Error al procesar CSV:', error);
@@ -960,194 +772,13 @@
             }
         }
 
-        function procesarJSON(contenido) {
-            try {
-                const datosJSON = JSON.parse(contenido);
-                let datosImportados = 0;
-
-                // Verificar si es un array
-                const array = Array.isArray(datosJSON) ? datosJSON : [datosJSON];
-
-                array.forEach((item, index) => {
-                    // Mapear propiedades comunes
-                    const cargo = item.cargo || item.puesto || item.position || item.job;
-                    const tipo = item.tipo || item.type || item.categoria || item.category;
-                    const elemento = item.elemento || item.item || item.articulo || item.product;
-                    const cantidad = parseInt(item.cantidad || item.qty || item.quantity) || 1;
-                    const monto = parseFloat(item.monto || item.precio || item.price || item.costo) || 0;
-                    const proveedor = item.proveedor || item.supplier || item.vendor || 'Sin especificar';
-
-                    if (cargo && tipo && elemento) {
-                        const nuevoElemento = {
-                            id: Date.now() + index,
-                            cargo: cargo,
-                            tipo: tipo,
-                            elemento: elemento,
-                            cantidad: cantidad,
-                            monto: monto,
-                            proveedor: proveedor,
-                            total: cantidad * monto
-                        };
-                        datos.push(nuevoElemento);
-                        datosImportados++;
-                    }
-                });
-
-                actualizarFiltros();
-                mostrarDatos();
-                alert(`✅ Se importaron ${datosImportados} elementos exitosamente`);
-
-            } catch (error) {
-                console.error('Error al procesar JSON:', error);
-                alert('❌ Error al procesar el archivo JSON. Verifica el formato.');
-            }
-        }
-
-        function procesarExcel(contenido) {
-            try {
-                // Leer el archivo Excel
-                const workbook = XLSX.read(contenido, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                
-                // Convertir a JSON
-                const datosJSON = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                if (datosJSON.length < 2) {
-                    alert('❌ El archivo Excel está vacío o no tiene datos válidos');
-                    return;
-                }
-
-                const headers = datosJSON[0].map(h => (h || '').toString().toLowerCase().trim());
-                
-                // Mapear headers comunes
-                const mapeoHeaders = {
-                    'cargo': ['cargo', 'puesto', 'position', 'job'],
-                    'tipo': ['tipo', 'type', 'categoria', 'category'],
-                    'elemento': ['elemento', 'item', 'articulo', 'product', 'producto'],
-                    'cantidad': ['cantidad', 'qty', 'quantity', 'cant'],
-                    'monto': ['monto', 'precio', 'price', 'costo', 'cost', 'valor', 'monto unitario'],
-                    'proveedor': ['proveedor', 'supplier', 'vendor', 'empresa']
-                };
-
-                const indices = {};
-                Object.keys(mapeoHeaders).forEach(campo => {
-                    const index = headers.findIndex(h => 
-                        mapeoHeaders[campo].some(variante => h.includes(variante))
-                    );
-                    if (index !== -1) indices[campo] = index;
-                });
-
-                // Verificar que tenemos los campos mínimos
-                if (!indices.cargo || !indices.tipo || !indices.elemento) {
-                    alert('❌ El archivo Excel debe contener al menos las columnas: Cargo, Tipo, Elemento');
-                    return;
-                }
-
-                let datosImportados = 0;
-                for (let i = 1; i < datosJSON.length; i++) {
-                    const fila = datosJSON[i];
-                    if (!fila || fila.length === 0) continue;
-
-                    const cargo = (fila[indices.cargo] || '').toString().trim();
-                    const tipo = (fila[indices.tipo] || '').toString().trim();
-                    const elemento = (fila[indices.elemento] || '').toString().trim();
-                    const cantidad = parseInt(fila[indices.cantidad]) || 1;
-                    const monto = parseFloat(fila[indices.monto]) || 0;
-                    const proveedor = (fila[indices.proveedor] || 'Sin especificar').toString().trim();
-
-                    if (cargo && tipo && elemento) {
-                        const nuevoElemento = {
-                            id: Date.now() + i,
-                            cargo: cargo,
-                            tipo: tipo,
-                            elemento: elemento,
-                            cantidad: cantidad,
-                            monto: monto,
-                            proveedor: proveedor,
-                            total: cantidad * monto
-                        };
-                        datos.push(nuevoElemento);
-                        datosImportados++;
-                    }
-                }
-
-                actualizarFiltros();
-                mostrarDatos();
-                alert(`✅ Se importaron ${datosImportados} elementos exitosamente desde Excel`);
-
-            } catch (error) {
-                console.error('Error al procesar Excel:', error);
-                alert('❌ Error al procesar el archivo Excel. Verifica que el formato sea correcto.');
-            }
-        }
-
-        // Función para generar plantilla Excel
         function descargarPlantilla() {
-            try {
-                // Datos de ejemplo para la plantilla
-                const datosPlantilla = [
-                    ['Cargo', 'Tipo', 'Elemento', 'Cantidad', 'Monto Unitario', 'Proveedor'],
-                    ['Soldador', 'EPP', 'Casco de seguridad', 2, 45.50, 'Seguridad Industrial SA'],
-                    ['Soldador', 'Ropa', 'Overol ignífugo', 1, 85.00, 'Textiles Industriales'],
-                    ['Operario', 'EPP', 'Guantes de seguridad', 5, 12.30, 'Protección Total'],
-                    ['Supervisor', 'Ropa', 'Chaleco reflectivo', 1, 25.00, 'Uniformes Pro'],
-                    ['Técnico', 'EPP', 'Lentes de seguridad', 3, 18.75, 'Óptica Industrial'],
-                    ['Operario', 'Ropa', 'Botas de seguridad', 2, 65.00, 'Calzado Laboral']
-                ];
-
-                // Crear workbook
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(datosPlantilla);
-
-                // Aplicar formato a los headers
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                
-                // Estilo para headers
-                for (let col = range.s.c; col <= range.e.c; col++) {
-                    const cellAddress = XLSX.utils.encode_cell({r: 0, c: col});
-                    if (!ws[cellAddress]) continue;
-                    ws[cellAddress].s = {
-                        font: { bold: true, color: { rgb: "FFFFFF" } },
-                        fill: { fgColor: { rgb: "2C3E50" } },
-                        alignment: { horizontal: "center" }
-                    };
-                }
-
-                // Ajustar ancho de columnas
-                const colWidths = [
-                    { wch: 15 }, // Cargo
-                    { wch: 8 },  // Tipo
-                    { wch: 25 }, // Elemento
-                    { wch: 10 }, // Cantidad
-                    { wch: 15 }, // Monto Unitario
-                    { wch: 25 }  // Proveedor
-                ];
-                ws['!cols'] = colWidths;
-
-                // Agregar hoja al workbook
-                XLSX.utils.book_append_sheet(wb, ws, "Plantilla EPP");
-
-                // Descargar archivo
-                XLSX.writeFile(wb, 'plantilla_epp.xlsx');
-                
-                alert('✅ Plantilla Excel descargada exitosamente');
-                
-            } catch (error) {
-                console.error('Error al generar plantilla Excel:', error);
-                alert('❌ Error al generar plantilla Excel. Descargando como CSV...');
-                // Fallback a CSV
-                descargarPlantillaCSV();
-            }
-        }
-
-        function descargarPlantillaCSV() {
             const plantilla = [
                 'Cargo,Tipo,Elemento,Cantidad,Monto Unitario,Proveedor',
-                'Soldador,EPP,Casco de seguridad,2,45.50,Seguridad Industrial SA',
-                'Soldador,Ropa,Overol ignífugo,1,85.00,Textiles Industriales',
-                'Operario,EPP,Guantes de seguridad,5,12.30,Protección Total',
-                'Supervisor,Ropa,Chaleco reflectivo,1,25.00,Uniformes Pro'
+                'Soldador,EPP,Casco de seguridad,2,45500,Seguridad Industrial SA',
+                'Soldador,Ropa,Overol ignífugo,1,85000,Textiles Industriales',
+                'Operario,EPP,Guantes de seguridad,5,12300,Protección Total',
+                'Supervisor,Ropa,Chaleco reflectivo,1,25000,Uniformes Pro'
             ].join('\n');
 
             const blob = new Blob(['\ufeff' + plantilla], { type: 'text/csv;charset=utf-8;' });
@@ -1166,8 +797,22 @@
             }, 100);
         }
 
-        // Inicializar la aplicación
-        mostrarDatos();
+        // Event listener para carga de archivos
+        document.addEventListener('DOMContentLoaded', function() {
+            mostrarDatos();
+            
+            document.getElementById('cargar-archivo').addEventListener('change', function(event) {
+                const archivo = event.target.files[0];
+                if (!archivo) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    procesarCSV(e.target.result);
+                };
+                reader.readAsText(archivo, 'UTF-8');
+                event.target.value = '';
+            });
+        });
     </script>
 </body>
 </html>
